@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LumaFlux</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+      color: white;
+      font-family: sans-serif;
+    }
+    header, footer {
+      text-align: center;
+      padding: 0.5em;
+      background: #111;
+    }
+    #controls {
+      margin: 0.5em;
+    }
+    select, button {
+      padding: 0.4em;
+      margin: 0.2em;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.9/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.9/lib/addons/p5.sound.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>LumaFlux</h1>
+    <div id="controls">
+      <label for="modeSelect">Mode:</label>
+      <select id="modeSelect">
+        <option value="0">Spiral</option>
+        <option value="1">Noise Field</option>
+        <option value="2">Bouncing Balls</option>
+        <option value="3">Wave Grid</option>
+        <option value="4">Cellular Grid</option>
+        <option value="5">Rays</option>
+        <option value="6">Pulse Circles</option>
+        <option value="7">Tunnel Zoom</option>
+        <option value="8">Echo Points</option>
+        <option value="9">Audio Visualizer</option>
+      </select>
+      <button onclick="saveCanvas('lumaflux','png')">🎨 Export</button>
+    </div>
+  </header>
+
+  <script>
+    let currentMode = 0;
+    const states = [];
+    let osc, playing = false;
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight - 100);
+      angleMode(DEGREES);
+      background(0);
+      for (let i = 0; i < 10; i++) states.push({});
+      initMode(currentMode);
+      document.getElementById('modeSelect').addEventListener('change', e => {
+        currentMode = int(e.target.value);
+        initMode(currentMode);
+      });
+      osc = new p5.Oscillator('sine');
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight - 100);
+      initMode(currentMode);
+    }
+
+    function draw() {
+      background(0, 30);
+      switch (currentMode) {
+        case 0: drawSpiral(); break;
+        case 1: drawNoiseField(); break;
+        case 2: drawBouncingBalls(); break;
+        case 3: drawWaveGrid(); break;
+        case 4: drawCellularGrid(); break;
+        case 5: drawRays(); break;
+        case 6: drawPulseCircles(); break;
+        case 7: drawTunnelZoom(); break;
+        case 8: drawEchoPoints(); break;
+        case 9: drawAudioVisualizer(); break;
+      }
+    }
+
+    function mouseDragged() {
+      if (!playing) {
+        osc.start();
+        playing = true;
+      }
+      let freq = map(mouseX, 0, width, 100, 1000);
+      let amp = map(mouseY, 0, height, 1, 0);
+      osc.freq(freq);
+      osc.amp(amp, 0.1);
+    }
+
+    function mouseReleased() {
+      osc.amp(0, 0.5);
+      playing = false;
+    }
+
+    function initMode(mode) {
+      switch (mode) {
+        case 2:
+          states[2].balls = Array.from({ length: 10 }, () => ({
+            x: random(width),
+            y: random(height),
+            dx: random(-3, 3),
+            dy: random(-3, 3)
+          }));
+          break;
+      }
+    }
+
+    function drawSpiral() {
+      translate(width/2, height/2);
+      stroke(255);
+      noFill();
+      beginShape();
+      for (let t = 0; t < 360 * 5; t += 5) {
+        let r = t * 0.5;
+        let x = r * cos(t + frameCount);
+        let y = r * sin(t + frameCount);
+        vertex(x, y);
+      }
+      endShape();
+    }
+
+    function drawNoiseField() {
+      noStroke();
+      for (let x = 0; x < width; x += 10) {
+        for (let y = 0; y < height; y += 10) {
+          let n = noise(x * 0.01, y * 0.01, frameCount * 0.01);
+          fill(n * 255, 100, 255 - n * 255, 100);
+          rect(x, y, 10, 10);
+        }
+      }
+    }
+
+    function drawBouncingBalls() {
+      for (let b of states[2].balls) {
+        fill(255, 100);
+        noStroke();
+        ellipse(b.x, b.y, 30);
+        b.x += b.dx;
+        b.y += b.dy;
+        if (b.x < 0 || b.x > width) b.dx *= -1;
+        if (b.y < 0 || b.y > height) b.dy *= -1;
+      }
+    }
+
+    function drawWaveGrid() {
+      stroke(255);
+      for (let x = 0; x < width; x += 20) {
+        for (let y = 0; y < height; y += 20) {
+          let offset = sin((x + y + frameCount * 2) * 0.05) * 10;
+          ellipse(x, y + offset, 5);
+        }
+      }
+    }
+
+    function drawCellularGrid() {
+      noStroke();
+      for (let x = 0; x < width; x += 30) {
+        for (let y = 0; y < height; y += 30) {
+          let c = noise(x * 0.01, y * 0.01, frameCount * 0.01) * 255;
+          fill(c, 255 - c, 150);
+          rect(x, y, 30, 30);
+        }
+      }
+    }
+
+    function drawRays() {
+      translate(width/2, height/2);
+      stroke(255);
+      for (let i = 0; i < 360; i += 10) {
+        let len = 200 + 50 * sin(frameCount + i);
+        let x = len * cos(i);
+        let y = len * sin(i);
+        line(0, 0, x, y);
+      }
+    }
+
+    function drawPulseCircles() {
+      noFill();
+      stroke(255);
+      for (let i = 0; i < 20; i++) {
+        ellipse(width/2, height/2, sin(frameCount * 0.1 + i) * 100 + 150);
+      }
+    }
+
+    function drawTunnelZoom() {
+      translate(width/2, height/2);
+      noFill();
+      stroke(255);
+      for (let i = 0; i < 20; i++) {
+        ellipse(0, 0, (frameCount + i * 20) % 400);
+      }
+    }
+
+    function drawEchoPoints() {
+      noStroke();
+      fill(255);
+      for (let i = 0; i < 100; i++) {
+        let angle = random(TWO_PI);
+        let r = frameCount % (width / 2);
+        let x = width/2 + cos(angle) * r;
+        let y = height/2 + sin(angle) * r;
+        ellipse(x, y, 3);
+      }
+    }
+
+    function drawAudioVisualizer() {
+      let vol = osc.getAmp().value * 500;
+      noFill();
+      stroke(255);
+      ellipse(width/2, height/2, vol + 100);
+    }
+  </script>
+
+  <footer>
+    Made with 💜 using p5.js — LumaFlux
+  </footer>
+</body>
+  <footer>
+    Made with 💜 using p5.js — LumaFlux
+  </footer>
+</body>
+</html>
